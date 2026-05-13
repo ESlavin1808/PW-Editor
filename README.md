@@ -24,7 +24,7 @@
 
 ```bash
 # Клонировать
-git clone https://github.com/your-username/PW-Editor.git
+git clone https://github.com/ESlavin1808/PW-Editor.git
 cd PW-Editor
 
 # Виртуальное окружение (рекомендуется)
