@@ -1,0 +1,29 @@
+# Виртуальное окружение
+venv/
+__pycache__/
+*.pyc
+
+# Данные (создаются при запуске)
+data/
+export/
+
+# Настройки (содержит API-ключ!)
+settings.json
+
+# Иконки (генерируются create_icon.py)
+app_icon.ico
+app_icon_*.png
+
+# Старые бэкапы
+*.bak
+
+# Редактор
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
