@@ -832,17 +832,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 .editor-stats{font-size:11px;color:var(--text-secondary);padding:2px 16px 6px;display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid var(--border-light);margin-top:4px}
 .editor-stats span{white-space:nowrap}
 .block.paragraph{font-size:16px;line-height:1.35;color:var(--text-primary)}
-.block.paragraph [contenteditable]{min-height:1.5em;outline:none}
-.block.paragraph [contenteditable]:empty::before{content:attr(data-placeholder);color:var(--text-secondary);pointer-events:none}
-.block.heading [contenteditable]{outline:none;font-weight:600;color:var(--text-primary)}
-.block.heading [contenteditable]:empty::before{content:attr(data-placeholder);color:var(--text-secondary);pointer-events:none}
+.block.paragraph [contenteditable]{min-height:0.5em;outline:none;padding:2px 0}
+.block.heading [contenteditable]{outline:none;font-weight:600;color:var(--text-primary);min-height:0.5em;padding:2px 0}
 .block.heading.h2 [contenteditable]{font-size:24px;line-height:1.4}
 .block.heading.h3 [contenteditable]{font-size:20px;line-height:1.4}
 .block.list ul,.block.list ol{margin-left:20px;font-size:16px;line-height:1.7;color:var(--text-primary)}
 .block.quote{border-left:4px solid var(--accent);padding:12px 20px;background:var(--bg-body);font-size:16px;font-style:italic;line-height:1.7;color:var(--text-primary)}
 .block.quote [contenteditable]{outline:none}
-.block.quote [contenteditable]:empty::before{content:attr(data-placeholder);color:var(--text-secondary);font-style:normal}
-.block.separator{text-align:center;padding:8px;color:var(--border);font-size:20px;cursor:default}
+.block.separator{text-align:center;padding:4px 0;cursor:default}
+.block.separator hr{border:none;border-top:1px solid var(--border);margin:0;width:100%;height:1px}
 .block.image{background:var(--bg-body);border:1px dashed var(--border);text-align:center;padding:12px;border-radius:4px;color:var(--text-secondary);font-size:14px;cursor:pointer;resize:both;overflow:hidden;min-width:100px}
 .block.image img{max-width:100%;max-height:300px;border-radius:4px;display:block;margin:0 auto}
 .block.image .img-placeholder{padding:24px;color:var(--text-secondary)}
@@ -874,10 +872,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 .block.paragraph img[style*="display: block"], .block.paragraph img[align="center"]{display:block;margin:16px auto;max-width:100%;border-radius:4px}
 .block.code{background:var(--bg-body);border:1px solid var(--border);font-family:'Courier New',monospace;font-size:14px;line-height:1.6;padding:16px;color:var(--text-primary)}
 .block.code [contenteditable]{outline:none;white-space:pre}
-.block.code [contenteditable]:empty::before{content:attr(data-placeholder);color:var(--text-secondary)}
 /* Block toolbar */
 .block-toolbar{position:absolute;top:-40px;left:0;z-index:50;display:none;align-items:center;gap:2px;background:var(--bg-panel);border:1px solid var(--border);border-radius:4px;padding:3px;box-shadow:0 2px 6px rgba(0,0,0,.1);height:34px}
 .block.selected .block-toolbar{display:flex}
+.block-toolbar.fixed{position:fixed;z-index:200;top:56px;left:auto;right:auto;display:flex;width:auto}
 .block-toolbar button{background:none;border:none;border-radius:3px;padding:3px 8px;cursor:pointer;font-size:12px;line-height:1.4;color:var(--text-secondary);white-space:nowrap}
 .block-toolbar button:hover{background:var(--bg-body);color:var(--text-primary)}
 .block-toolbar .sep{width:1px;height:20px;background:var(--border);margin:0 2px}
@@ -890,6 +888,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 .tb-popup-sep{height:1px;margin:4px 0;background:var(--border)}
 .tb-popup-img{left:auto;right:0}
 .tb-popup-ai{left:0;right:auto;z-index:200}
+.tb-popup-color{left:auto;right:0;min-width:140px;padding:8px}
+.tb-popup-title{font-size:11px;color:var(--text-secondary);margin-bottom:6px;text-align:center}
+.color-swatch{display:inline-block;width:20px;height:20px;border-radius:3px;cursor:pointer;margin:2px;border:1px solid var(--border);vertical-align:middle}
+.color-swatch:hover{transform:scale(1.2);border-color:var(--accent)}
 /* Settings bar */
 .settings-bar{width:280px;min-width:280px;background:var(--bg-panel);border-left:1px solid var(--border);display:flex;flex-direction:column;position:relative;overflow-y:auto;transition:width .25s,min-width .25s}
 .settings-bar.hidden{width:0;min-width:0;overflow:hidden;border-left:none;padding:0}
@@ -1215,10 +1217,20 @@ body.focus-mode #btnFocus{background:var(--accent);color:#fff;border-radius:4px}
   <!-- Правая панель -->
   <div class="settings-bar hidden" id="settingsBar">
     <div class="resize-handle-settings" id="settingsResizeHandle"></div>
+    <!-- Путь экспорта — всегда видим, под ресайзером -->
+    <div class="sett-export-quick">
+      <div class="sett-field" style="margin:0;padding:2px 8px">
+        <label style="font-size:10px;color:var(--text-secondary);display:block;margin-bottom:2px">💾 Папка экспорта</label>
+        <div class="path-row" style="margin:0">
+          <input type="text" id="exportPath" onchange="saveSettings()" placeholder="C:\путь\к\папке\экспорта" style="font-size:11px;flex:1;padding:2px 5px;width:0;min-width:40px">
+          <button onclick="pickExportPath()" title="Выбрать папку экспорта" style="font-size:13px;padding:1px 5px;cursor:pointer;border:1px solid var(--border);border-radius:3px;background:var(--bg-muted)">📁</button>
+        </div>
+      </div>
+    </div>
     <div class="sett-tabs">
       <button class="active" data-tab="document" onclick="switchTab('document')" title="Информация о материале">📄 Инфо</button>
       <button data-tab="ai" onclick="switchTab('ai')" title="Настройки ИИ">🤖 AI</button>
-      <button data-tab="export" onclick="switchTab('export')" title="Настройки экспорта">💾 Экспорт</button>
+      <button data-tab="export" onclick="switchTab('export')" title="Настройки экспорта">📂 Данные</button>
     </div>
     <div class="sett-body" id="settBody">
       <!-- Инфо -->
@@ -1305,17 +1317,8 @@ body.focus-mode #btnFocus{background:var(--accent);color:#fff;border-radius:4px}
         </div>
       </div>
 
-      <!-- Экспорт -->
+      <!-- Экспорт / Данные -->
       <div id="tabExport" style="display:none">
-        <div class="sett-group">
-          <div class="sett-title">Папка экспорта</div>
-          <div class="sett-field">
-            <div class="path-row">
-              <input type="text" id="exportPath" readonly>
-              <button onclick="pickExportPath()" title="Выбрать папку экспорта">📁</button>
-            </div>
-          </div>
-        </div>
         <div class="sett-group">
           <div class="sett-title">Данные</div>
           <div class="sett-field"><label>JSON-данные</label><div class="info-text" id="dataPathInfo"></div></div>
@@ -1455,6 +1458,7 @@ var TYPE_LABELS={post:'\u0417\u0430\u043f\u0438\u0441\u044c',news:'\u041d\u043e\
   try {
     clearEditor();
     initInlineEditor();
+    initPasteHandler();
     window.pywry.emit('content:switch',{content_type:'post'});
     window.pywry.emit('settings:get',{});
   } catch(e) {
@@ -1518,6 +1522,50 @@ function addBlock(type,level,afterIdx){
   renderBlocks();scheduleAutoSave();
   setTimeout(function(){var idx=blocks.indexOf(b);if(idx>=0)selectBlock(idx);},50);
 }
+/* ─── Сохранение выделения для тулбара ─── */
+var _savedRange=null;
+function saveSelection(){
+  var sel=window.getSelection();
+  if(sel&&sel.rangeCount>0&&!sel.isCollapsed)_savedRange=sel.getRangeAt(0).cloneRange();
+  else _savedRange=null;
+}
+// Сохраняет любую позицию (включая caret) — для кнопок тулбара
+var _savedCaret=null;
+function saveCaret(){
+  var sel=window.getSelection();
+  if(sel&&sel.rangeCount>0){_savedCaret=sel.getRangeAt(0).cloneRange();}
+  else _savedCaret=null;
+}
+function restoreCaret(){
+  if(!_savedCaret)return;
+  try{
+    var sel=window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(_savedCaret);
+  }catch(e){}
+}
+function restoreSelection(){
+  if(!_savedRange)return;
+  try{
+    var sel=window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(_savedRange);
+  }catch(e){}
+}
+// Автосохранение выделения при выделении текста
+document.addEventListener('mouseup',function(){
+  var el=document.activeElement;
+  if(el&&el.isContentEditable)saveSelection();
+});
+// Сохраняем позицию курсора ПЕРЕД кликом по кнопке тулбара
+document.addEventListener('mousedown',function(e){
+  var btn=e.target.closest('.block-toolbar button');
+  if(btn)saveCaret();
+});
+document.addEventListener('keyup',function(){
+  var el=document.activeElement;
+  if(el&&el.isContentEditable)saveSelection();
+});
 function addBlockAt(idx){addBlock('paragraph',null,idx);}
 function addImageBlock(){
   saveHistory();
@@ -1567,6 +1615,7 @@ function selectBlock(idx, ctrl){
   selectedBlocks=[];
   renderBlocks();
   updateBlockInfo();
+  setTimeout(positionToolbar,10);
 }
 function deselectBlock(){
   selectedBlock=-1;
@@ -1574,6 +1623,51 @@ function deselectBlock(){
   renderBlocks();
   updateBlockInfo();
 }
+function positionToolbar(){
+  var toolbar=document.querySelector('.block.selected .block-toolbar');
+  if(!toolbar){
+    var old=document.querySelector('.block-toolbar.fixed');
+    if(old)old.classList.remove('fixed');
+    return;
+  }
+  var block=toolbar.closest('.block');
+  if(!block)return;
+  var br=block.getBoundingClientRect();
+  // Если тулбар уходит за верхнюю границу окна — фиксируем
+  if(br.top<50){
+    toolbar.classList.add('fixed');
+    // При fixed позиционировании left должен быть от viewport
+    var ecRect=document.querySelector('.editor-center').getBoundingClientRect();
+    toolbar.style.left=ecRect.left+'px';
+    toolbar.style.top='56px';
+    toolbar.style.width=(ecRect.width-10)+'px';
+  }else{
+    toolbar.classList.remove('fixed');
+    toolbar.style.left='';
+    toolbar.style.top='';
+    toolbar.style.width='';
+  }
+}
+/* ─── Отслеживание скролла для тулбара ─── */
+var _posToolbarScheduled=null;
+function _schedulePosToolbar(){
+  if(_posToolbarScheduled)return;
+  _posToolbarScheduled=requestAnimationFrame(function(){
+    _posToolbarScheduled=null;
+    positionToolbar();
+  });
+}
+// Слушаем скролл везде, где может крутиться редактор
+window.addEventListener('scroll',_schedulePosToolbar,{passive:true});
+window.addEventListener('resize',_schedulePosToolbar,{passive:true});
+// Слушаем скролл внутри редактора
+var _ec=document.querySelector('.editor-center');
+if(_ec)_ec.addEventListener('scroll',_schedulePosToolbar,{passive:true});
+if(_ec)_ec.addEventListener('resize',_schedulePosToolbar,{passive:true});
+// Дополнительно: MutationObserver на случай изменения DOM
+var _posObserver=new MutationObserver(function(){_schedulePosToolbar();});
+var _be=document.getElementById('blockEditor');
+if(_be)_posObserver.observe(_be,{childList:true,subtree:true,attributes:false});
 /* ─── Drag & Drop блоков ─── */
 var _dragIdx=-1;
 function onDragStart(ev,idx){
@@ -1710,10 +1804,26 @@ function renderBlocks(){
       h.push('<button onclick="event.stopPropagation();convertBlock('+i+',\'paragraph\')" title="Обычный текст"'+((b.type==='paragraph')?' class="type-active"':'')+'>\u00b6</button>');
       h.push('<button onclick="event.stopPropagation();convertBlock('+i+',\'heading\',\'h2\')" title="Заголовок H2"'+((b.type==='heading'&&b.level==='h2')?' class="type-active"':'')+'>H2</button>');
       h.push('<button onclick="event.stopPropagation();convertBlock('+i+',\'heading\',\'h3\')" title="Заголовок H3"'+((b.type==='heading'&&b.level==='h3')?' class="type-active"':'')+'>H3</button>');
+      h.push('<div style="position:relative;display:inline-block">');
+      h.push('<button onclick="event.stopPropagation();toggleSepPopup('+i+')" title="Вставить разделитель" class="has-popup">\u2500\u2500</button>');
+      h.push('<div class="tb-popup" id="sepPop'+i+'" onclick="event.stopPropagation()" style="left:auto;right:0">');
+      h.push('<div class="tb-popup-item" onclick="event.stopPropagation();addBlock(\'separator\',null,'+(i-1)+')">\u2500\u2500 \u0412\u044b\u0448\u0435</div>');
+      h.push('<div class="tb-popup-item" onclick="event.stopPropagation();addBlock(\'separator\',null,'+i+')">\u2500\u2500 \u041d\u0438\u0436\u0435</div>');
+      h.push('</div></div>');
       h.push('<span class="sep"></span>');
       h.push('<button onclick="event.stopPropagation();fmtBlock(\'bold\')" title="Полужирный (Ctrl+B)"><b>B</b></button>');
       h.push('<button onclick="event.stopPropagation();fmtBlock(\'italic\')" title="Курсив (Ctrl+I)"><i>I</i></button>');
       h.push('<button onclick="event.stopPropagation();fmtBlock(\'underline\')" title="Подчёркнутый (Ctrl+U)"><u>U</u></button>');
+      h.push('<div style="position:relative;display:inline-block">');
+      h.push('<button onclick="event.stopPropagation();toggleColorPopup('+i+')" title="Цвет текста" class="has-popup" style="font-size:12px">\ud83c\udfa8</button>');
+      h.push('<div class="tb-popup tb-popup-color" id="colorPop'+i+'" onclick="event.stopPropagation()">');
+      h.push('<div class="tb-popup-title">\u0426\u0432\u0435\u0442 \u0442\u0435\u043a\u0441\u0442\u0430</div>');
+      var colors=['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#000000','#555555','#95a5a6','#ecf0f1','#ffffff'];
+      for(var ci=0;ci<colors.length;ci++){
+        h.push('<div class="color-swatch" style="background:'+colors[ci]+'" onclick="event.stopPropagation();changeTextColor(\''+colors[ci]+'\', '+i+');hideAllPopups()" title="'+colors[ci]+'"></div>');
+        if(ci===5)h.push('<br>');
+      }
+      h.push('</div></div>');
       h.push('<select class="fs-select" title="Размер шрифта" onchange="event.stopPropagation();changeFontSize(this)" onfocus="event.stopPropagation()"><option value="">A</option><option value="10">10</option><option value="12">12</option><option value="14">14</option><option value="16">16</option><option value="18">18</option><option value="20">20</option><option value="24">24</option><option value="36">36</option></select>');
       h.push('<span class="sep"></span>');
       h.push('<button onclick="event.stopPropagation();fmtBlock(\'insertUnorderedList\')" title="Маркированный список">ul</button>');
@@ -1735,20 +1845,22 @@ function renderBlocks(){
     if(i>0)h.push('<button onclick="event.stopPropagation();moveBlock('+i+',-1)" title="Вверх">\u25b2</button>');
     if(i<blocks.length-1)h.push('<button onclick="event.stopPropagation();moveBlock('+i+',1)" title="Вниз">\u25bc</button>');
     h.push('<button onclick="event.stopPropagation();copyBlock('+i+')" title="Копировать блок">\ud83d\udccb</button>');
+    h.push('<button onclick="event.stopPropagation();mergeBlockWithPrevious('+i+')" title="Объединить с предыдущим блоком (Backspace в начале)">\u2b06\ufe0f</button>');
+    h.push('<button onclick="event.stopPropagation();splitBlockAtCursor('+i+')" title="Разделить блок на два (Shift+Enter)">\u2702\ufe0f</button>');
     h.push('<button onclick="event.stopPropagation();removeBlock('+i+')" title="Удалить блок">\u2715</button>');
     h.push('</div>');
     if(b.type==='paragraph'){
-      h.push('<div contenteditable="true" spellcheck="true" data-placeholder="Начните писать..." onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
+      h.push('<div contenteditable="true" spellcheck="true" onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
     }else if(b.type==='heading'){
-      h.push('<div contenteditable="true" spellcheck="true" data-placeholder="Заголовок..." onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
+      h.push('<div contenteditable="true" spellcheck="true" onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
     }else if(b.type==='list'){
       h.push('<div contenteditable="true" spellcheck="true" onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
     }else if(b.type==='quote'){
-      h.push('<div contenteditable="true" spellcheck="true" data-placeholder="Текст цитаты..." onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
+      h.push('<div contenteditable="true" spellcheck="true" onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
     }else if(b.type==='separator'){
       h.push('<hr>');
     }else if(b.type==='code'){
-      h.push('<div contenteditable="true" spellcheck="true" data-placeholder="Код..." onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
+      h.push('<div contenteditable="true" spellcheck="true" onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
     }else if(b.type==='image'){
       if(b.imageData){
         h.push('<img src="'+b.imageData+'" alt="'+(b.imageName||'')+'">');
@@ -1838,6 +1950,114 @@ function uploadImage(idx){
     inp.value='';
   };
   inp.click();
+}
+
+/* ─── Text Color ─── */
+function toggleColorPopup(idx){
+  // Сохраняем выделение перед открытием попапа
+  saveSelection();
+  var pop=document.getElementById('colorPop'+idx);
+  if(!pop)return;
+  var vis=pop.style.display!=='block';
+  // close all color popups first
+  var all=document.querySelectorAll('.tb-popup-color');
+  for(var i=0;i<all.length;i++)all[i].style.display='none';
+  pop.style.display=vis?'block':'none';
+  // position below the button
+  if(vis){
+    var btn=pop.parentElement.querySelector('.has-popup');
+    if(btn){
+      var rect=btn.getBoundingClientRect();
+      // offset relative to .block-toolbar (pop inside toolbar)
+      var toolbar=pop.closest('.block-toolbar');
+      if(toolbar){
+        var tr=toolbar.getBoundingClientRect();
+        pop.style.top=(rect.bottom-tr.top+2)+'px';
+        pop.style.left='0px';
+      }
+    }
+  }
+}
+function toggleSepPopup(idx){
+  hideAllPopups();
+  var pop=document.getElementById('sepPop'+idx);
+  if(!pop)return;
+  pop.style.display=pop.style.display==='block'?'none':'block';
+}
+function changeTextColor(color,idx){
+  var el=document.querySelector('.block[data-idx="'+idx+'"]');
+  if(!el)return;
+  var ce=el.querySelector('[contenteditable]');
+  if(!ce)return;
+  // Восстанавливаем сохранённое выделение
+  restoreSelection();
+  var sel=window.getSelection();
+  if(!sel||!sel.rangeCount)return;
+  var range=sel.getRangeAt(0);
+  if(range.collapsed)return;
+  // Проверяем что выделение внутри нашего contenteditable
+  if(!ce.contains(range.commonAncestorContainer))return;
+  // Оборачиваем выделение в span с нужным цветом
+  try{
+    var span=document.createElement('span');
+    span.style.color=color;
+    var contents=range.extractContents();
+    span.appendChild(contents);
+    range.insertNode(span);
+    // Восстанавливаем выделение внутрь span
+    var nr=document.createRange();nr.selectNodeContents(span);
+    sel.removeAllRanges();sel.addRange(nr);
+  }catch(e){}
+  // sync
+  blocks[idx].content=ce.innerHTML;
+  scheduleAutoSave();
+  // close popup
+  var pop=document.getElementById('colorPop'+idx);
+  if(pop)pop.style.display='none';
+}
+
+/* ─── Paste handler — чистый текст, один блок ─── */
+function initPasteHandler(){
+  var be=document.getElementById('blockEditor');
+  if(!be)return;
+  be.addEventListener('paste',function(e){
+    // Ищем contenteditable предок цели
+    var ce=e.target.closest('[contenteditable]');
+    if(!ce)return;
+    e.preventDefault();
+    // Получаем чистый текст из буфера
+    var text=(e.clipboardData||window.clipboardData).getData('text/plain');
+    if(!text)return;
+    // Заменяем переносы строк на <br>
+    var clean=text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    // Вставляем в позицию курсора
+    var sel=window.getSelection();
+    if(sel&&sel.rangeCount>0){
+      var range=sel.getRangeAt(0);
+      // Если курсор внутри нашего contenteditable
+      if(ce.contains(range.commonAncestorContainer)){
+        range.deleteContents();
+        var tmp=document.createElement('div');
+        tmp.innerHTML=clean;
+        var frag=document.createDocumentFragment();
+        while(tmp.firstChild)frag.appendChild(tmp.firstChild);
+        range.insertNode(frag);
+        // перемещаем курсор в конец вставленного
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        // синхронизируем данные блока
+        var bl=ce.closest('.block');
+        if(bl){
+          var idx=parseInt(bl.dataset.idx);
+          if(idx>=0&&idx<blocks.length){
+            blocks[idx].content=ce.innerHTML;
+            scheduleAutoSave();
+          }
+        }
+      }
+    }
+  },true);
 }
 
 /* ─── Inline Image Popup ─── */
@@ -1985,6 +2205,73 @@ function onBlockInput(idx){
   scheduleAutoSave();
   updateStats();
 }
+function splitBlockAtCursor(idx){
+  var el=document.querySelector('.block[data-idx="'+idx+'"]');
+  if(!el)return;
+  var ce=el.querySelector('[contenteditable]');
+  if(!ce)return;
+  // Используем ТЕКУЩУЮ позицию курсора (не сохранённое выделение — оно может быть устаревшим)
+  restoreCaret();
+  var sel=window.getSelection();
+  if(!sel||!sel.rangeCount)return;
+  var range=sel.getRangeAt(0);
+  // Проверяем, что курсор внутри нашего contenteditable
+  if(!ce.contains(range.commonAncestorContainer))return;
+  // Создаём range для левой части (от начала до курсора/начала выделения)
+  var leftRange=document.createRange();
+  leftRange.selectNodeContents(ce);
+  leftRange.setEnd(range.startContainer,range.startOffset);
+  // Создаём range для правой части (от курсора/начала выделения до конца)
+  // ВАЖНО: используем startContainer/startOffset, а не endContainer/endOffset,
+  // чтобы выделенный текст не потерялся
+  var rightRange=document.createRange();
+  rightRange.selectNodeContents(ce);
+  rightRange.setStart(range.startContainer,range.startOffset);
+  // Клонируем содержимое (не вырезаем, а копируем)
+  var leftFrag=leftRange.cloneContents();
+  var rightFrag=rightRange.cloneContents();
+  // Если справа пусто — не разделяем
+  if(!rightFrag.textContent.trim())return;
+  // Получаем HTML из фрагментов (сохраняет все теги, стили, цвета)
+  var leftDiv=document.createElement('div');
+  leftDiv.appendChild(leftFrag);
+  var rightDiv=document.createElement('div');
+  rightDiv.appendChild(rightFrag);
+  var leftHTML=leftDiv.innerHTML;
+  var rightHTML=rightDiv.innerHTML;
+  // Обновляем текущий блок левой частью
+  saveHistory();
+  blocks[idx].content=leftHTML;
+  // Создаём новый блок с правой частью
+  var nb=createBlock('paragraph');
+  nb.content=rightHTML;
+  blocks.splice(idx+1,0,nb);
+  renderBlocks();
+  setTimeout(function(){selectBlock(idx+1);},50);
+  scheduleAutoSave();
+}
+/* ─── Объединение блоков ─── */
+function mergeBlockWithPrevious(idx){
+  if(idx<=0)return;
+  saveHistory();
+  var prev=blocks[idx-1];
+  var curr=blocks[idx];
+  if(!prev||!curr)return;
+  // Если оба — параграфы или совместимые типы, объединяем
+  var prevHTML=prev.content||'';
+  var currHTML=curr.content||'';
+  // Сливаем: содержимое предыдущего + br + содержимое текущего
+  // Убираем пустые обёртки у обоих
+  if(!currHTML.trim()){
+    blocks.splice(idx,1);
+  }else{
+    blocks[idx-1].content=prevHTML+'<br>'+currHTML;
+    blocks.splice(idx,1);
+  }
+  renderBlocks();
+  setTimeout(function(){selectBlock(idx-1);},50);
+  scheduleAutoSave();
+}
 function onBlockKeydown(e,idx){
   if(e.ctrlKey&&e.key==='q'){e.preventDefault();window.pywry.emit('window:action',{action:'close'});return;}
   var b=blocks[idx];
@@ -2007,13 +2294,34 @@ function onBlockKeydown(e,idx){
     if(el){var ce=el.querySelector('[contenteditable]');if(ce)blocks[idx].content=ce.innerHTML;}
     return;
   }
-  if(e.key==='Enter'&&e.shiftKey&&(b.type==='paragraph'||b.type==='heading'||b.type==='quote')){
-    e.preventDefault();addBlock('paragraph',null,idx);
+  if(e.key==='Enter'&&e.shiftKey&&(b.type==='paragraph'||b.type==='heading'||b.type==='quote'||b.type==='code')){
+    e.preventDefault();saveCaret();splitBlockAtCursor(idx);
     return;
   }
   if(e.key==='Backspace'){
     var el=document.querySelector('.block[data-idx="'+idx+'"]');
-    if(el){var ce=el.querySelector('[contenteditable]');if(ce&&(ce.innerHTML===''||ce.innerHTML==='<br>')){e.preventDefault();removeBlock(idx);}}
+    if(el){var ce=el.querySelector('[contenteditable]');
+      if(ce){
+        // Курсор в начале блока — объединяем с предыдущим
+        if(idx>0){
+          var sel=window.getSelection();
+          if(sel&&sel.rangeCount>0){
+            var range=sel.getRangeAt(0);
+            var br=document.createRange();br.selectNodeContents(ce);
+            br.setEnd(range.startContainer,range.startOffset);
+            if(!br.toString().trim()){
+              e.preventDefault();
+              mergeBlockWithPrevious(idx);
+              return;
+            }
+          }
+        }
+        // Блок пуст — удаляем
+        if(ce.innerHTML===''||ce.innerHTML==='<br>'){
+          e.preventDefault();removeBlock(idx);
+        }
+      }
+    }
   }
 }
 function convertBlock(idx,newType,level){
@@ -2946,17 +3254,21 @@ function updateBlockInfo(){
   document.getElementById('blockTypeText').textContent=names[b.type]||b.type;
   if(b.type==='heading'){document.getElementById('blockHeadingLevel').style.display='block';document.getElementById('blockHeadingLevel').querySelector('select').value=b.level||'h2';}
   else document.getElementById('blockHeadingLevel').style.display='none';
+  setTimeout(positionToolbar,10);
 }
 
 /* ─── Настройки экспорта ─── */
 function saveSettings(){
-  expFormat=document.getElementById('exportFormat').value;
-  expPath=document.getElementById('exportPath').value;
-  window.pywry.emit('settings:save',{export_format:expFormat,export_path:expPath});
+  var ep=document.getElementById('exportPath');
+  if(!ep){showToast('Экспорт недоступен');return;}
+  expPath=ep.value;
+  window.pywry.emit('settings:save',{export_path:expPath,export_format:expFormat||'html'});
 }
 function pickExportPath(){
-  var p=prompt('\u041f\u0443\u0442\u044c \u0434\u043b\u044f \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0430:',document.getElementById('exportPath').value);
-  if(p){document.getElementById('exportPath').value=p;saveSettings();}
+  var ep=document.getElementById('exportPath');
+  if(!ep)return;
+  var p=prompt('\u041f\u0443\u0442\u044c \u0434\u043b\u044f \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0430:',ep.value);
+  if(p){ep.value=p;saveSettings();}
 }
 function openDataFolder(){
   showToast('\u0414\u0430\u043d\u043d\u044b\u0435: '+(document.getElementById('dataPathInfo').textContent||''));
