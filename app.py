@@ -177,8 +177,12 @@ def save_settings(s, skip_credman=False):
 def load_items(ctype):
     p = os.path.join(DATA_DIR, f'{ctype}.json')
     if os.path.exists(p):
-        with open(p, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(p, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            print(f'[ERROR] load_items({ctype}): {e}')
+            return []
     return []
 
 def save_items(ctype, items):
@@ -674,6 +678,8 @@ def cb_window_action(data, event_type, label):
     action = data.get('action', '')
     if action == 'close':
         win.close()
+        # Полный выход из процесса — гарантирует, что не останется в системе
+        os._exit(0)
     elif action == 'minimize':
         win.minimize()
     elif action == 'maximize':
@@ -761,6 +767,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 .top-bar{background:var(--bg-panel);border-bottom:1px solid var(--border);display:flex;align-items:center;height:52px;padding:0 16px;flex-shrink:0;z-index:100;-webkit-app-region:drag}
 .top-bar .brand{font-size:16px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px;margin-right:20px}
 .auto-save-indicator{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 6px;vertical-align:middle;background:var(--status-ok);transition:background .3s;flex-shrink:0}
+.format-indicator{display:inline-block;font-size:10px;color:var(--text-secondary);padding:1px 5px;border:1px solid var(--border);border-radius:3px;margin:0 4px;vertical-align:middle;line-height:1.4;cursor:default;flex-shrink:0}
 .top-bar .brand span{color:var(--accent);-webkit-app-region:no-drag}
 .type-selector select{appearance:none;-webkit-appearance:none;padding:6px 28px 6px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;background:var(--bg-muted);cursor:pointer;min-width:140px;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2350575e' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;color:var(--text-primary);-webkit-app-region:no-drag}
 .top-bar .actions{display:flex;align-items:center;gap:4px;margin-left:auto}
@@ -815,18 +822,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 .wp-title .tags-row input:focus{color:var(--text-primary)}
 /* Blocks */
 .block-editor{position:relative;flex:1;min-height:0;padding:0 4px}
-.block{position:relative;margin-bottom:1px;padding:2px 16px;border-radius:4px;border:1px solid transparent;transition:border-color .15s,background .15s;cursor:text}
+.block{position:relative;margin-bottom:1px;padding:2px 16px 2px 28px;border-radius:4px;border:1px solid transparent;transition:border-color .15s,background .15s;cursor:text}
 .block:hover{border-color:var(--border);background:var(--bg-panel)}
 .block.selected{border-color:var(--accent);background:var(--bg-panel);box-shadow:0 0 0 1px var(--accent)}
+/* Group block (container) */
+.block-group-content{position:relative}.block-group-content [contenteditable]{color:var(--text-primary);font-size:16px;line-height:1.35;outline:none;min-height:1.2em}.block-group-content>.block-children{margin-left:0;margin-top:2px}.block-group-content>.block-children>.child-block{position:relative;padding:2px 0 2px 24px;margin:2px 0;border-left:3px solid var(--border);transition:border-color .2s;color:var(--text-primary);font-size:16px;line-height:1.35}.block-group-content>.block-children>.child-block:hover{border-left-color:var(--accent)}.block-group-content>.block-children>.child-block .block-toolbar{display:none;position:absolute;right:0;top:0;background:var(--bg-panel);border:1px solid var(--border);border-radius:4px;padding:1px}.block-group-content>.block-children>.child-block:hover .block-toolbar{display:flex}.child-label{font-size:10px;color:var(--text-secondary);margin-right:4px;user-select:none;min-width:16px;text-align:right}.block-group-content>.block-children>.block-adder{opacity:0.4}.block-group-content>.block-children>.block-adder:hover{opacity:1}
+/* Child blocks inside group */
+.child-block{margin:2px 0;padding:4px 4px 4px 12px;border:1px solid transparent;border-radius:4px;transition:border-color .15s;border-left:2px solid var(--border);position:relative}
+.child-block:hover{border-color:var(--border);border-left-color:var(--accent)}
+.child-block.drag-over{border-color:var(--accent);border-left-color:var(--accent);background:rgba(52,152,219,0.05);box-shadow:0 0 0 1px var(--accent)}
+.child-block .child-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:2px;padding:0 2px;height:20px;opacity:0.4;transition:opacity .15s}
+.child-block:hover .child-toolbar{opacity:1}
+.child-block .child-label{font-size:9px;color:var(--text-secondary);margin-right:auto;min-width:16px}
+.child-block .tb-btn{width:18px;height:16px;font-size:9px;line-height:1;padding:0;border:none;background:none;cursor:pointer;color:var(--text-secondary);border-radius:2px;display:flex;align-items:center;justify-content:center}
+.child-block .tb-btn:hover{color:var(--text-primary);background:var(--bg-hover)}
+.child-block .child-del-btn{width:16px;height:16px;font-size:9px;line-height:1;padding:0;border:none;background:none;cursor:pointer;color:var(--text-secondary);border-radius:3px;display:flex;align-items:center;justify-content:center}
+.child-block .child-del-btn:hover{color:#e74c3c;background:rgba(231,76,60,0.1)}
 .block-adder{height:16px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;cursor:pointer;position:relative;margin:0}
 .block-adder:hover,.block-adder.show{opacity:1}
 .block-adder::before{content:'';position:absolute;left:0;right:0;height:1px;background:var(--border)}
 .block-adder button{position:relative;z-index:1;width:24px;height:24px;border-radius:50%;background:var(--bg-panel);border:1px solid var(--border);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);transition:all .15s}
 .block-adder button:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 /* Drag & Drop */
-.drag-handle{cursor:grab;opacity:0.3;font-size:14px;padding:0 4px;user-select:none;background:none;border:none;color:var(--text-secondary);display:inline-block;line-height:1}
-.block:hover .drag-handle,.block.selected .drag-handle{opacity:0.8}
-.drag-handle:active{cursor:grabbing;opacity:1}
+.drag-handle{position:absolute;left:2px;top:50%;transform:translateY(-50%);cursor:grab;opacity:0.3;font-size:14px;padding:6px 4px;user-select:none;background:none;border:none;color:var(--text-secondary);z-index:40;transition:opacity .15s,color .15s;border-radius:4px;line-height:1}
+.block:hover .drag-handle,.block.selected .drag-handle{opacity:0.7}
+.drag-handle:hover{opacity:1!important;color:var(--accent);background:var(--bg-hover)}
+.drag-handle:active{cursor:grabbing;opacity:1!important}
 .block.drag-over{border-color:var(--accent);border-style:dashed;background:var(--bg-muted)}
 .editor-hint{font-size:11px;color:var(--text-secondary);padding:4px 16px;margin-bottom:2px;text-align:center}
 .editor-stats{font-size:11px;color:var(--text-secondary);padding:2px 16px 6px;display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid var(--border-light);margin-top:4px}
@@ -874,6 +895,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 .block.code [contenteditable]{outline:none;white-space:pre}
 /* Block toolbar */
 .block-toolbar{position:absolute;top:-40px;left:0;z-index:50;display:none;align-items:center;gap:2px;background:var(--bg-panel);border:1px solid var(--border);border-radius:4px;padding:3px;box-shadow:0 2px 6px rgba(0,0,0,.1);height:34px}
+.block:hover .block-toolbar{display:flex}
 .block.selected .block-toolbar{display:flex}
 .block-toolbar.fixed{position:fixed;z-index:200;top:56px;left:auto;right:auto;display:flex;width:auto}
 .block-toolbar button{background:none;border:none;border-radius:3px;padding:3px 8px;cursor:pointer;font-size:12px;line-height:1.4;color:var(--text-secondary);white-space:nowrap}
@@ -886,6 +908,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 .tb-popup-item{padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;color:var(--text-primary);white-space:nowrap}
 .tb-popup-item:hover{background:var(--bg-body)}
 .tb-popup-sep{height:1px;margin:4px 0;background:var(--border)}
+.tb-popup-query{padding:4px;min-width:200px}
+.tb-popup-query textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:4px;padding:4px;background:var(--bg-body);color:var(--text-primary);font-size:12px;resize:none}
 .tb-popup-img{left:auto;right:0}
 .tb-popup-ai{left:0;right:auto;z-index:200}
 .tb-popup-color{left:auto;right:0;min-width:140px;padding:8px}
@@ -997,6 +1021,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubunt
 .preview-bar button{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:13px}
 .preview-bar button:hover{background:rgba(255,255,255,.25)}
 .preview-body{max-width:720px;margin:40px auto;padding:40px 48px 60px;font-family:-apple-system,'Segoe UI',sans-serif;color:var(--text-primary);line-height:1.7;font-size:16px;background:var(--bg-panel);border-radius:8px;box-shadow:0 2px 20px rgba(0,0,0,.15);overflow:hidden}
+.preview-group{margin:2px 0}
+.preview-group>.preview-child{margin:2px 0 2px 24px}
+.group{margin:2px 0}
+.group>*{margin:2px 0 2px 24px}
 .preview-body h1{font-size:32px;font-weight:700;margin-bottom:8px;line-height:1.3}
 .preview-body .preview-meta{color:var(--text-secondary);font-size:13px;margin-bottom:32px}
 .preview-body h2{font-size:24px;margin-top:32px;margin-bottom:12px;font-weight:600}
@@ -1139,12 +1167,13 @@ body.focus-mode #btnFocus{background:var(--accent);color:#fff;border-radius:4px}
     <button onclick="showPreview()" title="Предпросмотр">👁️</button>
     <button onclick="toggleFocus()" id="btnFocus" title="Режим фокуса">🎯</button>
     <span id="autoSaveIndicator" class="auto-save-indicator" title="Сохранено"></span>
+    <span id="formatIndicator" class="format-indicator" title="Формат экспорта"></span>
     <!-- Сохранить -->
     <button class="btn-save" onclick="showSaveDialog()" title="Сохранить с экспортом (Ctrl+S)">💾 Сохранить</button>
     <div class="win-controls">
       <button onclick="window.pywry.emit('window:action',{action:'minimize'})" title="Свернуть" id="btnMinimize">─</button>
       <button onclick="toggleMaximize()" title="Развернуть" id="btnMaximize">🗖</button>
-      <button class="btn-close" onclick="window.pywry.emit('window:action',{action:'close'})" title="Закрыть" id="btnClose">✕</button>
+      <button class="btn-close" onclick="saveAndClose()" title="Закрыть" id="btnClose">✕</button>
     </div>
   </div>
 </div>
@@ -1364,7 +1393,7 @@ body.focus-mode #btnFocus{background:var(--accent);color:#fff;border-radius:4px}
       <option value="pdf">PDF — прямая печать</option>
     </select>
     <label>Папка для экспорта</label>
-    <input type="text" id="savePath" readonly>
+    <input type="text" id="savePath" onchange="expPath=this.value">
     <div class="save-actions">
       <button class="btn-save" onclick="confirmSave()" title="Сохранить и экспортировать" style="flex:2">💾 Сохранить</button>
       <button onclick="hideSaveDialog()" title="Отменить" style="background:var(--bg-muted);border:1px solid var(--border);color:var(--text-primary)">Отмена</button>
@@ -1467,14 +1496,41 @@ var TYPE_LABELS={post:'\u0417\u0430\u043f\u0438\u0441\u044c',news:'\u041d\u043e\
   }
 })();
 
+/* ─── Принудительное закрытие с сохранением ─── */
+function saveAndClose(){
+  // Сохраняем через beforeunload (он делает content:save)
+  var title=document.getElementById('postTitle').value.trim();
+  var hasContent=title||blocks.length>1||(blocks.length===1&&blocks[0].content);
+  if(hasContent){
+    var data = (typeof collectContent==='function') ? collectContent() : {};
+    window.pywry.emit('content:save',{
+      content_type: currentType,
+      item: {
+        id: currentId||'',
+        title: title,
+        type: currentType,
+        tags: document.getElementById('postTags')?document.getElementById('postTags').value:'',
+        content: data.content || '',
+        news_date: document.getElementById('newsDate')?document.getElementById('newsDate').value:'',
+        article_author: document.getElementById('articleAuthor')?document.getElementById('articleAuthor').value:'',
+        article_source: document.getElementById('articleSource')?document.getElementById('articleSource').value:'',
+        blocks: JSON.parse(JSON.stringify(blocks))
+      }
+    });
+  }
+  // Небольшая задержка чтобы save успел уйти на Python, затем закрываем
+  setTimeout(function(){
+    window.pywry.emit('window:action',{action:'close'});
+  },100);
+}
+
 /* ─── Автосохранение при закрытии ─── */
 window.addEventListener('beforeunload',function(){
   var title=document.getElementById('postTitle').value.trim();
   var hasContent=title||blocks.length>1||(blocks.length===1&&blocks[0].content);
   if(hasContent){
     // Синхронное сохранение через emit (успеет отправить до закрытия)
-    var content='';
-    if(typeof collectContent==='function')content=collectContent();
+    var data = (typeof collectContent==='function') ? collectContent() : {};
     window.pywry.emit('content:save',{
       content_type: currentType,
       item: {
@@ -1482,7 +1538,8 @@ window.addEventListener('beforeunload',function(){
         title: title,
         type: currentType,
         tags: document.getElementById('postTags').value,
-        content: content,
+        content: data.content || '',
+        blocks: JSON.parse(JSON.stringify(blocks)),
         news_date: document.getElementById('newsDate')?document.getElementById('newsDate').value:'',
         article_author: document.getElementById('articleAuthor')?document.getElementById('articleAuthor').value:'',
         article_rubric: document.getElementById('articleRubric')?document.getElementById('articleRubric').value:'',
@@ -1512,8 +1569,8 @@ function createBlock(type,level){
   blockCounter++;
   var c='';
   if(type==='list')c='<ul><li></li></ul>';
-  if(type==='table')return{id:'b'+blockCounter+'_'+Date.now().toString(36),type:'table',level:'',content:'',rows:[[{content:''},{content:''}],[{content:''},{content:''}]],colWidths:[],imageData:null,imageName:null};
-  return{id:'b'+blockCounter+'_'+Date.now().toString(36),type:type,level:level||'',content:c,imageData:null,imageName:null};
+  if(type==='table')return{id:'b'+blockCounter+'_'+Date.now().toString(36),type:'table',level:'',content:'',children:[],rows:[[{content:''},{content:''}],[{content:''},{content:''}]],colWidths:[],imageData:null,imageName:null};
+  return{id:'b'+blockCounter+'_'+Date.now().toString(36),type:type,level:level||'',content:c,children:[],imageData:null,imageName:null};
 }
 function addBlock(type,level,afterIdx){
   saveHistory();
@@ -1559,7 +1616,7 @@ document.addEventListener('mouseup',function(){
 });
 // Сохраняем позицию курсора ПЕРЕД кликом по кнопке тулбара
 document.addEventListener('mousedown',function(e){
-  var btn=e.target.closest('.block-toolbar button');
+  var btn=e.target.closest('.block-toolbar button,.child-toolbar button');
   if(btn)saveCaret();
 });
 document.addEventListener('keyup',function(){
@@ -1668,61 +1725,126 @@ if(_ec)_ec.addEventListener('resize',_schedulePosToolbar,{passive:true});
 var _posObserver=new MutationObserver(function(){_schedulePosToolbar();});
 var _be=document.getElementById('blockEditor');
 if(_be)_posObserver.observe(_be,{childList:true,subtree:true,attributes:false});
-/* ─── Drag & Drop блоков ─── */
-var _dragIdx=-1;
-function onDragStart(ev,idx){
-  _dragIdx=idx;
-  ev.dataTransfer.effectAllowed='move';
-  ev.dataTransfer.setData('text/plain',String(idx));
-  // Небольшая задержка, чтобы визуал сработал
-  setTimeout(function(){
-    var el=document.querySelector('.block[data-idx="'+idx+'"]');
-    if(el)el.style.opacity='0.4';
-  },0);
+/* ─── Mouse-based Drag & Drop блоков ─── */
+var _dragActive=false,_dragSrcIdx=-1,_dragGhost=null,_dragTargetEl=null,_dragTargetChild=null,_dragFlatTarget=false;
+function onMDragStart(e,idx){
+  if(e.button!==0)return;
+  e.preventDefault();
+  _dragActive=true;_dragSrcIdx=idx;
+  var srcEl=document.querySelector('.block[data-idx="'+idx+'"]');
+  if(!srcEl)return;
+  srcEl.style.opacity='0.4';
+  _dragGhost=srcEl.cloneNode(true);
+  _dragGhost.style.position='fixed';
+  _dragGhost.style.pointerEvents='none';
+  _dragGhost.style.opacity='0.6';
+  _dragGhost.style.zIndex='99999';
+  _dragGhost.style.transform='scale(0.97)';
+  _dragGhost.style.width=srcEl.offsetWidth+'px';
+  _dragGhost.style.boxShadow='0 8px 24px rgba(0,0,0,0.2)';
+  _dragGhost.style.borderRadius='8px';
+  _dragGhost.style.overflow='hidden';
+  _dragGhost.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
+  document.body.appendChild(_dragGhost);
+  document.querySelectorAll('[contenteditable]').forEach(function(el){el.style.pointerEvents='none';});
+  _moveGhost(e.clientX,e.clientY);
+  document.addEventListener('mousemove',_onMMove);
+  document.addEventListener('mouseup',_onMUp);
 }
-function onDragOver(ev,idx){
-  ev.preventDefault();
-  ev.dataTransfer.dropEffect='move';
-  // Подсветка цели
-  var els=document.querySelectorAll('.block.drag-over');
-  for(var i=0;i<els.length;i++)els[i].classList.remove('drag-over');
-  var el=document.querySelector('.block[data-idx="'+idx+'"]');
-  if(el&&idx!==_dragIdx)el.classList.add('drag-over');
+function _moveGhost(x,y){
+  if(!_dragGhost)return;
+  _dragGhost.style.left=(x-Math.round(_dragGhost.offsetWidth/2))+'px';
+  _dragGhost.style.top=(y-30)+'px';
 }
-function onDragLeave(ev){
-  var el=document.querySelector('.block.drag-over');
-  if(el)el.classList.remove('drag-over');
+function _onMMove(e){
+  if(!_dragActive)return;
+  _moveGhost(e.clientX,e.clientY);
+  document.querySelectorAll('.drag-over,.drag-target').forEach(function(el){el.classList.remove('drag-over','drag-target');});
+  _dragTargetEl=null;_dragTargetChild=null;_dragFlatTarget=false;
+  var el=document.elementFromPoint(e.clientX,e.clientY);
+  if(!el||el===_dragGhost||(_dragGhost&&_dragGhost.contains(el)))return;
+  var childEl=el.closest('.child-block[data-parent]');
+  if(childEl){
+    childEl.classList.add('drag-over');
+    _dragTargetChild=childEl;
+    return;
+  }
+  var blockEl=el.closest('.block[data-idx]');
+  if(!blockEl)return;
+  var idx=parseInt(blockEl.dataset.idx);
+  if(isNaN(idx)||idx===_dragSrcIdx)return;
+  if(blocks[idx]&&blocks[idx].type==='group'){
+    // Определяем позицию курсора внутри блока-группы
+    var rect=blockEl.getBoundingClientRect();
+    var relY=(e.clientY-rect.top)/rect.height;
+    if(relY<0.25||relY>0.75){
+      // Верхняя/нижняя часть — плоская перестановка
+      blockEl.classList.add('drag-over');
+      _dragFlatTarget=true;
+    }else{
+      // Средняя часть — в группу
+      var childrenArea=blockEl.querySelector('.block-children');
+      if(childrenArea)childrenArea.classList.add('drag-target');
+    }
+  }else{
+    blockEl.classList.add('drag-over');
+  }
+  _dragTargetEl=blockEl;
 }
-function onDrop(ev,idx){
-  ev.preventDefault();
-  onDragLeave(ev);
-  // Убираем подсветку со всех
-  var els=document.querySelectorAll('.block.drag-over');
-  for(var i=0;i<els.length;i++)els[i].classList.remove('drag-over');
-  var srcIdx=_dragIdx;
-  _dragIdx=-1;
-  if(srcIdx<0||srcIdx===idx||srcIdx>=blocks.length||idx>=blocks.length)return;
-  // Восстанавливаем opacity
-  var srcEl=document.querySelector('.block[data-idx="'+srcIdx+'"]');
+function _onMUp(e){
+  document.removeEventListener('mousemove',_onMMove);
+  document.removeEventListener('mouseup',_onMUp);
+  if(!_dragActive){_dragActive=false;return;}
+  _dragActive=false;
+  document.querySelectorAll('[contenteditable]').forEach(function(el){el.style.pointerEvents='';});
+  if(_dragGhost){_dragGhost.remove();_dragGhost=null;}
+  document.querySelectorAll('.drag-over,.drag-target').forEach(function(el){el.classList.remove('drag-over','drag-target');});
+  var srcEl=document.querySelector('.block[data-idx="'+_dragSrcIdx+'"]');
   if(srcEl)srcEl.style.opacity='';
-  // Переставляем блок
+  if(_dragTargetChild) _doDropOnChild(_dragSrcIdx,_dragTargetChild);
+  else if(_dragTargetEl) _doDropOnBlock(_dragSrcIdx,_dragTargetEl);
+  _dragSrcIdx=-1;_dragTargetEl=null;_dragTargetChild=null;_dragFlatTarget=false;
+}
+function _doDropOnBlock(srcIdx,targetEl){
+  var targetIdx=parseInt(targetEl.dataset.idx);
+  if(isNaN(targetIdx)||srcIdx===targetIdx||srcIdx<0||srcIdx>=blocks.length||targetIdx<0||targetIdx>=blocks.length)return;
+  var dst=blocks[targetIdx];
+  if(dst&&dst.type==='group'&&!_dragFlatTarget){
+    // В группу (только если курсор был в средней части блока)
+    syncChildrenFromDOM(targetIdx);
+    saveHistory();
+    var b=blocks.splice(srcIdx,1)[0];
+    if(srcIdx<targetIdx)targetIdx--;
+    if(!dst.children)dst.children=[];
+    dst.children.push(b);
+    selectedBlock=targetIdx;renderBlocks();scheduleAutoSave();
+    setTimeout(function(){selectBlock(targetIdx);},50);
+  }else{
+    // Плоская перестановка (в т.ч. если дропнули на группу сверху/снизу)
+    saveHistory();
+    var b=blocks.splice(srcIdx,1)[0];
+    if(srcIdx<targetIdx)targetIdx--;
+    blocks.splice(targetIdx,0,b);
+    selectedBlock=targetIdx;renderBlocks();scheduleAutoSave();
+    setTimeout(function(){selectBlock(targetIdx);},50);
+  }
+}
+function _doDropOnChild(srcIdx,childEl){
+  var parentIdx=parseInt(childEl.dataset.parent);
+  var childIdx=parseInt(childEl.dataset.child);
+  if(isNaN(parentIdx)||isNaN(childIdx)||srcIdx<0||srcIdx>=blocks.length||parentIdx<0||parentIdx>=blocks.length)return;
+  syncChildrenFromDOM(parentIdx);
   saveHistory();
   var b=blocks.splice(srcIdx,1)[0];
-  // После splice индекс цели мог измениться
-  var targetIdx=idx;
-  if(srcIdx<targetIdx)targetIdx--;
-  blocks.splice(targetIdx,0,b);
-  selectedBlock=targetIdx;
-  renderBlocks();
-  scheduleAutoSave();
-  setTimeout(function(){selectBlock(targetIdx);},50);
-}
-function onDragEnd(ev){
-  var els=document.querySelectorAll('.block.drag-over');
-  for(var i=0;i<els.length;i++)els[i].classList.remove('drag-over');
-  var el=document.querySelector('.block[data-idx="'+_dragIdx+'"]');
-  if(el)el.style.opacity='';
-  _dragIdx=-1;
+  var pp=parentIdx;
+  if(srcIdx<pp)pp--;
+  var parent=blocks[pp];
+  if(parent&&parent.type==='group'){
+    if(!parent.children)parent.children=[];
+    parent.children.splice(childIdx+1,0,b);
+  }
+  selectedBlock=pp;renderBlocks();scheduleAutoSave();
+  setTimeout(function(){selectBlock(pp);},50);
 }
 /* document click hides all popups (they use stopPropagation to stay open) */
 document.addEventListener('click',function(){hideAllPopups();});
@@ -1752,7 +1874,7 @@ function redo(){
 
 /* --- Stats --- */
 function updateStats(){
-  var words=0,chars=0;
+  var words=0,chars=0,bcount=0;
   for(var i=0;i<blocks.length;i++){
     var b=blocks[i];
     if(b.type==='table'){
@@ -1762,6 +1884,15 @@ function updateStats(){
           chars+=t.length;
           words+=t.trim()?t.trim().split(/\s+/).length:0;
         }
+    }else if(b.type==='group'){
+      // Count children as additional blocks
+      var children=b.children||[];
+      for(var ci=0;ci<children.length;ci++){
+        var ct=children[ci].content||'';
+        chars+=ct.length;
+        words+=ct.trim()?ct.trim().split(/\s+/).length:0;
+      }
+      bcount+=children.length;
     }else{
       var t=b.content||'';
       if(b.type==='image')continue;
@@ -1771,7 +1902,7 @@ function updateStats(){
   }
   document.getElementById('statWords').textContent=words+' \u0441\u043b\u043e\u0432';
   document.getElementById('statChars').textContent=chars+' \u0441\u0438\u043c\u0432.';
-  document.getElementById('statBlocks').textContent=blocks.length+' \u0431\u043b\u043e\u043a\u043e\u0432';
+  document.getElementById('statBlocks').textContent=(blocks.length+bcount)+' \u0431\u043b\u043e\u043a\u043e\u0432';
 }
 
 function renderBlocks(){
@@ -1780,9 +1911,9 @@ function renderBlocks(){
   h.push('<div class="block-adder show"><button onclick="addBlockAt(-1)" title="Добавить блок">+</button></div>');
   for(var i=0;i<blocks.length;i++){
     var b=blocks[i],sel=i===selectedBlock?' selected':'', multi=selectedBlocks.indexOf(i)>=0?' multi-sel':'';
-    h.push('<div class="block '+b.type+(b.level?' '+b.level:'')+sel+multi+'" data-idx="'+i+'" ondragover="onDragOver(event,'+i+')" ondrop="onDrop(event,'+i+')" ondragleave="onDragLeave(event)" onclick="event.stopPropagation();if(event.ctrlKey||event.metaKey){selectBlock('+i+',true);}">');
+    h.push('<div class="block '+b.type+(b.level?' '+b.level:'')+sel+multi+'" data-idx="'+i+'" onclick="event.stopPropagation();if(event.ctrlKey||event.metaKey)selectBlock('+i+',true);else selectBlock('+i+');">');
+    h.push('<span class="drag-handle" onmousedown="onMDragStart(event,'+i+')" title="\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u044c \u0431\u043b\u043e\u043a">\u22ee\u22ee</span>');
     h.push('<div class="block-toolbar">');
-    h.push('<span class="drag-handle" draggable="true" ondragstart="onDragStart(event,'+i+')" ondragend="onDragEnd(event)" title="\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u044c \u0431\u043b\u043e\u043a">\u22ee\u22ee</span>');
     if(b.type==='table'){
       h.push('<button onclick="event.stopPropagation();fmtBlock(\'bold\')" title="Полужирный"><b>B</b></button>');
       h.push('<button onclick="event.stopPropagation();fmtBlock(\'italic\')" title="Курсив"><i>I</i></button>');
@@ -1800,10 +1931,13 @@ function renderBlocks(){
       h.push('<div class="tb-popup-item" onclick="event.stopPropagation();aiFromToolbar('+i+',\'translate\')">\ud83c\udf10 \u041f\u0435\u0440\u0435\u0432\u0435\u0441\u0442\u0438</div>');
       h.push('<div class="tb-popup-sep"></div>');
       h.push('<div class="tb-popup-item" onclick="event.stopPropagation();aiFromToolbar('+i+',\'explain\')">\ud83d\udca1 \u041e\u0442\u0432\u0435\u0442\u0438\u0442\u044c</div>');
+      h.push('<div class="tb-popup-sep"></div>');
+      h.push('<div class="tb-popup-query"><textarea rows="2" placeholder="\u0412\u0430\u0448 \u0437\u0430\u043f\u0440\u043e\u0441..." style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:4px;padding:4px;background:var(--bg-body);color:var(--text-primary);font-size:12px;resize:none"></textarea><button onclick="event.stopPropagation();blockAiQuerySend('+i+')" style="width:100%;margin-top:4px;padding:4px;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-size:11px">\ud83e\udd16 \u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043a\u0430\u043a \u043f\u043e\u0434\u0431\u043b\u043e\u043a</button></div>');
       h.push('</div></div>');
       h.push('<button onclick="event.stopPropagation();convertBlock('+i+',\'paragraph\')" title="Обычный текст"'+((b.type==='paragraph')?' class="type-active"':'')+'>\u00b6</button>');
       h.push('<button onclick="event.stopPropagation();convertBlock('+i+',\'heading\',\'h2\')" title="Заголовок H2"'+((b.type==='heading'&&b.level==='h2')?' class="type-active"':'')+'>H2</button>');
       h.push('<button onclick="event.stopPropagation();convertBlock('+i+',\'heading\',\'h3\')" title="Заголовок H3"'+((b.type==='heading'&&b.level==='h3')?' class="type-active"':'')+'>H3</button>');
+      h.push('<button onclick="event.stopPropagation();convertBlock('+i+',\'group\')" title="Группа (контейнер с подблоками)"'+((b.type==='group')?' class="type-active"':'')+'>\ud83d\udce6</button>');
       h.push('<div style="position:relative;display:inline-block">');
       h.push('<button onclick="event.stopPropagation();toggleSepPopup('+i+')" title="Вставить разделитель" class="has-popup">\u2500\u2500</button>');
       h.push('<div class="tb-popup" id="sepPop'+i+'" onclick="event.stopPropagation()" style="left:auto;right:0">');
@@ -1861,6 +1995,25 @@ function renderBlocks(){
       h.push('<hr>');
     }else if(b.type==='code'){
       h.push('<div contenteditable="true" spellcheck="true" onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+b.content+'</div>');
+    }else if(b.type==='group'){
+      var children=b.children||[];
+      // Группа рендерится как обычный блок (первый child), подблоки — под ним
+      var firstContent=children.length>0?children[0].content||'':'';
+      // Показываем блок с содержимым первого подблока
+      h.push('<div class="block-group-content">');
+      h.push('<div contenteditable="true" spellcheck="true" onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')">'+firstContent+'</div>');
+      h.push('<div class="block-children">');
+      if(children.length===0){
+        // пустая группа — показываем как обычный пустой блок
+        h.push('<div contenteditable="true" spellcheck="true" onfocus="selectBlock('+i+')" oninput="onBlockInput('+i+')" onkeydown="onBlockKeydown(event,'+i+')"></div>');
+      }else{
+        for(var ci=1;ci<children.length;ci++){
+          h.push(_renderChildBlock(children[ci],i,ci));
+        }
+        h.push('<div class="block-adder"><button onclick="addChildBlock('+i+','+(children.length-1)+')" title="Добавить подблок">+</button></div>');
+      }
+      h.push('</div>');
+      h.push('</div>');
     }else if(b.type==='image'){
       if(b.imageData){
         h.push('<img src="'+b.imageData+'" alt="'+(b.imageName||'')+'">');
@@ -1919,6 +2072,130 @@ function renderBlocks(){
   c.innerHTML=h.join('');
   c.onclick=function(e){if(e.target===c)deselectBlock();};
   updateStats();
+}
+
+/* ─── Helper: отрисовка подблока внутри группы ─── */
+function _renderChildBlock(b,parentIdx,childIdx){
+  var h=[];
+  h.push('<div class="block child-block '+b.type+(b.level?' '+b.level:'')+'" data-parent="'+parentIdx+'" data-child="'+childIdx+'">');
+  h.push('<div class="block-toolbar child-toolbar">');
+  h.push('<span class="child-label">#'+(childIdx+1)+'</span>');
+  h.push('<button class="tb-btn" tabindex="-1" onclick="event.stopPropagation();fmtChild('+parentIdx+','+childIdx+',\'bold\')" title="Полужирный"><b>B</b></button>');
+  h.push('<button class="tb-btn" tabindex="-1" onclick="event.stopPropagation();fmtChild('+parentIdx+','+childIdx+',\'italic\')" title="Курсив"><i>I</i></button>');
+  h.push('<button class="tb-btn" tabindex="-1" onclick="event.stopPropagation();fmtChild('+parentIdx+','+childIdx+',\'underline\')" title="Подчёркнутый"><u>U</u></button>');
+  h.push('<button class="tb-btn" tabindex="-1" onclick="event.stopPropagation();extractFromGroup('+parentIdx+','+childIdx+')" title="Извлечь из группы">⬆</button>');
+  h.push('<button class="child-del-btn" tabindex="-1" onclick="event.stopPropagation();removeChildBlock('+parentIdx+','+childIdx+')" title="Удалить подблок">✕</button>');
+  h.push('</div>');
+  if(b.type==='paragraph'||b.type==='heading'||b.type==='quote'||b.type==='code'){
+    h.push('<div contenteditable="true" spellcheck="true" onfocus="selectChildBlock('+parentIdx+','+childIdx+')" oninput="onChildInput('+parentIdx+','+childIdx+')" onkeydown="onChildKeydown(event,'+parentIdx+','+childIdx+')">'+(b.content||'')+'</div>');
+  }else if(b.type==='separator'){
+    h.push('<hr>');
+  }else{
+    h.push('<div>'+(b.content||'')+'</div>');
+  }
+  h.push('</div>');
+  return h.join('');
+}
+/* ─── Синхронизация children из DOM в данные ─── */
+function syncChildrenFromDOM(parentIdx){
+  var parent=blocks[parentIdx];
+  if(!parent||parent.type!=='group'||!parent.children)return;
+  var pEl=document.querySelector('.block[data-idx="'+parentIdx+'"]');
+  if(!pEl)return;
+  // Первый child — содержимое основного блока
+  if(parent.children.length>0){
+    var mainCe=pEl.querySelector('.block-group-content [contenteditable]');
+    if(mainCe)parent.children[0].content=mainCe.innerHTML;
+  }
+  // Остальные child — подблоки
+  for(var sci=1;sci<parent.children.length;sci++){
+    var ce=pEl.querySelector('.child-block[data-child="'+sci+'"] [contenteditable]');
+    if(ce)parent.children[sci].content=ce.innerHTML;
+  }
+}
+/* ─── Управление подблоками внутри группы ─── */
+function addChildBlock(parentIdx,afterChildIdx){
+  // Сначала синхронизируем всё из DOM, чтобы не потерять набранный текст
+  syncChildrenFromDOM(parentIdx);
+  saveHistory();
+  var parent=blocks[parentIdx];
+  if(!parent||parent.type!=='group')return;
+  var b=createBlock('paragraph');
+  if(afterChildIdx!==undefined&&afterChildIdx>=0)parent.children.splice(afterChildIdx+1,0,b);
+  else parent.children.push(b);
+  renderBlocks();
+  scheduleAutoSave();
+  // Выделяем новый подблок
+  setTimeout(function(){
+    var pEl=document.querySelector('.block[data-idx="'+parentIdx+'"]');
+    if(!pEl)return;
+    var childEl=pEl.querySelector('.child-block:last-child');
+    if(childEl){
+      var ce=childEl.querySelector('[contenteditable]');
+      if(ce)ce.focus();
+    }
+  },50);
+}
+function removeChildBlock(parentIdx,childIdx){
+  syncChildrenFromDOM(parentIdx);
+  saveHistory();
+  var parent=blocks[parentIdx];
+  if(!parent||parent.type!=='group')return;
+  parent.children.splice(childIdx,1);
+  renderBlocks();
+  scheduleAutoSave();
+}
+function extractFromGroup(parentIdx,childIdx){
+  syncChildrenFromDOM(parentIdx);
+  saveHistory();
+  var parent=blocks[parentIdx];
+  if(!parent||parent.type!=='group'||!parent.children||childIdx>=parent.children.length)return;
+  var child=parent.children.splice(childIdx,1)[0];
+  // Вставляем извлечённый подблок в основной список, сразу после родительской группы
+  blocks.splice(parentIdx+1,0,child);
+  selectedBlock=parentIdx+1;
+  renderBlocks();scheduleAutoSave();
+  setTimeout(function(){selectBlock(parentIdx+1);},50);
+}
+function selectChildBlock(parentIdx,childIdx){
+  // Просто фокусируемся на подблоке, родительский блок выделяем для информации
+  selectBlock(parentIdx);
+}
+function onChildInput(parentIdx,childIdx){
+  var pEl=document.querySelector('.block[data-idx="'+parentIdx+'"]');
+  if(!pEl)return;
+  var ce=pEl.querySelector('.child-block[data-child="'+childIdx+'"] [contenteditable]');
+  if(ce){
+    var parent=blocks[parentIdx];
+    if(parent&&parent.children&&parent.children[childIdx])parent.children[childIdx].content=ce.innerHTML;
+  }
+  scheduleAutoSave();
+}
+function onChildKeydown(e,parentIdx,childIdx){
+  if(e.key==='Enter'&&!e.shiftKey){
+    e.preventDefault();
+    addChildBlock(parentIdx,childIdx);
+  }else if(e.key==='Backspace'){
+    var ce=e.target;
+    if(!ce.textContent.trim()&&ce===ce.parentElement){
+      e.preventDefault();
+      removeChildBlock(parentIdx,childIdx);
+    }
+  }
+}
+/* ─── Форматирование текста в подблоке ─── */
+function fmtChild(parentIdx,childIdx,cmd){
+  var pEl=document.querySelector('.block[data-idx="'+parentIdx+'"]');
+  if(!pEl)return;
+  var ce=pEl.querySelector('.child-block[data-child="'+childIdx+'"] [contenteditable]');
+  if(!ce)return;
+  // Не вызываем ce.focus() — это сбросит курсор в начало.
+  // execCommand работает с текущим getSelection() даже если фокус не на ce.
+  document.execCommand(cmd,false,null);
+  // Синхронизируем контент
+  var parent=blocks[parentIdx];
+  if(parent&&parent.children&&parent.children[childIdx])parent.children[childIdx].content=ce.innerHTML;
+  scheduleAutoSave();
 }
 
 /* ─── Загрузка изображений ─── */
@@ -2121,13 +2398,13 @@ function showInlinePopup(img){
   }else{
     aDiv.innerHTML='<button class="img-pop-btn del">\u2715 \u0423\u0434\u0430\u043b\u0438\u0442\u044c</button><button class="img-pop-btn sep">\u25a1 \u0412 \u0431\u043b\u043e\u043a</button>';
     aDiv.querySelector('.del').onclick=function(){
-      img.remove();saveInlineContent();pop.remove();activeInlineImg=null;
+      saveInlineContent();img.remove();pop.remove();activeInlineImg=null;
     };
     aDiv.querySelector('.sep').onclick=function(){
       var src=img.getAttribute('src'),alt=img.getAttribute('alt')||'';
       var ce=img.closest('[contenteditable]'),idx=-1;
       if(ce){var bl=ce.closest('.block');if(bl)idx=parseInt(bl.dataset.idx);}
-      img.remove();saveInlineContent();
+      saveInlineContent();img.remove();
       if(idx>=0){
         var nb=createBlock('image');nb.imageData=src;nb.imageName=alt||'image';
         blocks.splice(idx+1,0,nb);renderBlocks();
@@ -2200,8 +2477,15 @@ function inlineImage(idx,align){
 function onBlockInput(idx){
   var el=document.querySelector('.block[data-idx="'+idx+'"]');
   if(!el)return;
-  var ce=el.querySelector('[contenteditable]');
-  if(ce)blocks[idx].content=ce.innerHTML;
+  var b=blocks[idx];
+  if(b&&b.type==='group'){
+    // Группа: синхронизируем первый child
+    var ce=el.querySelector('.block-group-content [contenteditable]');
+    if(ce&&b.children&&b.children.length>0)b.children[0].content=ce.innerHTML;
+  }else{
+    var ce=el.querySelector('[contenteditable]');
+    if(ce)b.content=ce.innerHTML;
+  }
   scheduleAutoSave();
   updateStats();
 }
@@ -2275,7 +2559,7 @@ function mergeBlockWithPrevious(idx){
 function onBlockKeydown(e,idx){
   if(e.ctrlKey&&e.key==='q'){e.preventDefault();window.pywry.emit('window:action',{action:'close'});return;}
   var b=blocks[idx];
-  if(e.key==='Enter'&&!e.shiftKey&&(b.type==='paragraph'||b.type==='heading'||b.type==='quote')){
+  if(e.key==='Enter'&&!e.shiftKey&&(b.type==='paragraph'||b.type==='heading'||b.type==='quote'||b.type==='group')){
     e.preventDefault();
     // insert <br> inside current block (new line, not new block)
     var sel=window.getSelection();
@@ -2294,7 +2578,7 @@ function onBlockKeydown(e,idx){
     if(el){var ce=el.querySelector('[contenteditable]');if(ce)blocks[idx].content=ce.innerHTML;}
     return;
   }
-  if(e.key==='Enter'&&e.shiftKey&&(b.type==='paragraph'||b.type==='heading'||b.type==='quote'||b.type==='code')){
+  if(e.key==='Enter'&&e.shiftKey&&(b.type==='paragraph'||b.type==='heading'||b.type==='quote'||b.type==='code'||b.type==='group')){
     e.preventDefault();saveCaret();splitBlockAtCursor(idx);
     return;
   }
@@ -2326,6 +2610,17 @@ function onBlockKeydown(e,idx){
 }
 function convertBlock(idx,newType,level){
   var b=blocks[idx],oc=b.content;b.type=newType;b.level=level||'';
+  if(newType==='group'){
+    // При конвертации в группу: переносим содержимое в первый child
+    if(!b.children)b.children=[];
+    // Если был текст — создаём child с этим текстом
+    if(oc&&oc.trim()){
+      var firstChild=createBlock('paragraph');
+      firstChild.content=oc;
+      b.children.push(firstChild);
+    }
+    b.content=''; // группа не хранит свой контент
+  }
   if(b.rows){
     var texts=[];
     for(var ri=0;ri<b.rows.length;ri++)for(var ci=0;ci<b.rows[ri].length;ci++)texts.push(b.rows[ri][ci].content||'');
@@ -2334,7 +2629,7 @@ function convertBlock(idx,newType,level){
   }
   if(newType==='list')b.content='<ul><li>'+(oc||'')+'</li></ul>';
   else if(newType==='separator')b.content='';
-  else b.content=oc||'';
+  else if(newType!=='group')b.content=oc||'';
   renderBlocks();setTimeout(function(){selectBlock(idx);},50);
 }
 function changeHeadingLevel(l){if(selectedBlock>=0){blocks[selectedBlock].level=l;renderBlocks();setTimeout(function(){selectBlock(selectedBlock);},50);}}
@@ -2445,7 +2740,7 @@ function changeFontSize(el){
     if(ce)blocks[selectedBlock].content=ce.innerHTML;
   }
 }
-function fmtBlock(c){document.execCommand(c,false,null);var el=document.querySelector('.block.selected [contenteditable]');if(el){el.focus();if(selectedBlock>=0)blocks[selectedBlock].content=el.innerHTML;}}
+function fmtBlock(c){document.execCommand(c,false,null);var el=document.querySelector('.block.selected [contenteditable]');if(el){el.focus();if(selectedBlock>=0){var b=blocks[selectedBlock];if(b.type==='group'&&b.children&&b.children.length>0){var ce=el.querySelector('.block-group-content [contenteditable]');if(ce)b.children[0].content=ce.innerHTML;}else{b.content=el.innerHTML;}}}}
 function insertLinkBlock(){var u=prompt('\u0412\u0432\u0435\u0434\u0438\u0442\u0435 URL:');if(!u)return;document.execCommand('createLink',false,u);if(selectedBlock>=0){var el=document.querySelector('.block.selected [contenteditable]');if(el)blocks[selectedBlock].content=el.innerHTML;}scheduleAutoSave();}
 
 /* ─── Импорт Markdown ─── */
@@ -2606,12 +2901,63 @@ function aiFromToolbar(idx,action){
   // execute action (попап уже скрыт в начале функции)
   setTimeout(function(){aiAction(action);},200);
 }
+function blockAiQuerySend(idx){
+  hideAllPopups();
+  var block=blocks[idx];
+  if(!block){showToast('\u041d\u0435\u0442 \u0431\u043b\u043e\u043a\u0430');return;}
+  var popup=document.getElementById('aiPop'+idx);
+  var textarea=popup?popup.querySelector('.tb-popup-query textarea'):null;
+  var query=textarea?textarea.value.trim():'';
+  if(!query){showToast('\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0437\u0430\u043f\u0440\u043e\u0441');return;}
+  // Собираем контекст из содержимого блока
+  var ctx='';
+  if(block.type==='group'){
+    var children=block.children||[];
+    for(var ci=0;ci<children.length;ci++){
+      var d=document.createElement('div');d.innerHTML=children[ci].content||'';
+      ctx+=(d.textContent||d.innerText||'')+'\n';
+    }
+  }else{
+    var d=document.createElement('div');d.innerHTML=block.content||'';
+    ctx=d.textContent||d.innerText||'';
+  }
+  // Если блок не группа — конвертируем
+  if(block.type!=='group'){
+    convertBlock(idx,'group');
+    renderBlocks();
+    selectBlock(idx);
+  }
+  // Отправляем AI запрос
+  var prov=document.getElementById('aiProviderQuick').value;
+  var model=document.getElementById('aiModelQuick').value;
+  if(!model){showToast('\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u043c\u043e\u0434\u0435\u043b\u044c \u0432 \u043d\u0438\u0436\u043d\u0435\u0439 \u043f\u0430\u043d\u0435\u043b\u0438');return;}
+  var cfg=getProviderConfig(prov);
+  if(!cfg.url){showToast('\u041d\u0435\u0442 URL \u043f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440\u0430');return;}
+  _blockAiInsertAsChild=idx;
+  pendingAiBlockIdx=idx;
+  showAiLoading(idx);
+  window.pywry.emit('ai:query',{
+    prompt:'\u041a\u043e\u043d\u0442\u0435\u043a\u0441\u0442:\n'+ctx+'\n\n\u0417\u0430\u043f\u0440\u043e\u0441:\n'+query,
+    system:'\u041e\u0442\u0432\u0435\u0442\u044c \u043d\u0430 \u0437\u0430\u043f\u0440\u043e\u0441 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u043d\u0430 \u043e\u0441\u043d\u043e\u0432\u0435 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u0430. \u041e\u0442\u0432\u0435\u0442 \u0434\u0430\u0439 \u0432 \u0432\u0438\u0434\u0435 \u043e\u0434\u043d\u043e\u0433\u043e \u0430\u0431\u0437\u0430\u0446\u0430. \u041d\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439 Markdown.',
+    model:model,api_url:cfg.url,api_key:cfg.key,provider:prov
+  });
+}
 function showAiLoading(idx){
   removeAiInlineResult();
   var div=document.createElement('div');
   div.id='aiInlineResult';
   div.className='ai-inline-result loading';
   div.innerHTML='<div class="ai-inline-loading">\u23f3 \u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430 AI...</div>';
+  // Позиционируем под блоком
+  var blockEl=document.querySelector('.block[data-idx="'+idx+'"]');
+  if(blockEl){
+    var rect=blockEl.getBoundingClientRect();
+    div.style.position='fixed';
+    div.style.top=(rect.bottom+4)+'px';
+    div.style.left=rect.left+'px';
+    div.style.width=rect.width+'px';
+    div.style.zIndex='9999';
+  }
   document.body.appendChild(div);
 }
 function showAiResultInline(text){
@@ -2621,6 +2967,19 @@ function showAiResultInline(text){
   div.className='ai-inline-result';
   var escText=esc(text);
   div.innerHTML='<div class="ai-inline-header">\ud83e\udd16 \u0420\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 AI</div><div class="ai-inline-text">'+escText+'</div><div class="ai-inline-actions"><button onclick="replaceWithAiResult()" title="\u0417\u0430\u043c\u0435\u043d\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0431\u043b\u043e\u043a">\ud83d\udd04 \u0417\u0430\u043c\u0435\u043d\u0438\u0442\u044c</button><button onclick="insertAiResultBelow()" title="\u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043a\u0430\u043a \u043d\u043e\u0432\u044b\u0439 \u0431\u043b\u043e\u043a \u0441\u043d\u0438\u0437\u0443">➕ \u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044c</button><button onclick="discardAiResult()" title="\u041e\u0442\u043c\u0435\u043d\u0430">\u2715</button></div>';
+  // Позиционируем под блоком
+  var idx=pendingAiBlockIdx;
+  if(idx>=0){
+    var blockEl=document.querySelector('.block[data-idx="'+idx+'"]');
+    if(blockEl){
+      var rect=blockEl.getBoundingClientRect();
+      div.style.position='fixed';
+      div.style.top=(rect.bottom+4)+'px';
+      div.style.left=rect.left+'px';
+      div.style.width=rect.width+'px';
+      div.style.zIndex='9999';
+    }
+  }
   document.body.appendChild(div);
 }
 function removeAiInlineResult(){
@@ -2790,6 +3149,7 @@ function discardAiResult(){
   showToast('\u041e\u0442\u043c\u0435\u043d\u0435\u043d\u043e');
 }
 var aiChatTargetIdx=-1;
+var _blockAiInsertAsChild=-1;
 var chatSystem='\u041e\u0442\u0432\u0435\u0442\u044c \u043d\u0430 \u0437\u0430\u043f\u0440\u043e\u0441 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f. \u0420\u0430\u0437\u0431\u0438\u0432\u0430\u0439 \u043e\u0442\u0432\u0435\u0442 \u043d\u0430 \u0430\u0431\u0437\u0430\u0446\u044b: \u043a\u0430\u0436\u0434\u044b\u0439 \u043d\u043e\u0432\u044b\u0439 \u043f\u0443\u043d\u043a\u0442 \u0438\u043b\u0438 \u043c\u044b\u0441\u043b\u044c \u0441 \u043d\u043e\u0432\u043e\u0439 \u0441\u0442\u0440\u043e\u043a\u0438, \u043c\u0435\u0436\u0434\u0443 \u0430\u0431\u0437\u0430\u0446\u0430\u043c\u0438 \u043f\u0443\u0441\u0442\u0430\u044f \u0441\u0442\u0440\u043e\u043a\u0430. \u041d\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439 Markdown-\u0440\u0430\u0437\u043c\u0435\u0442\u043a\u0443 (\u043a\u0440\u043e\u043c\u0435 **\u0436\u0438\u0440\u043d\u043e\u0433\u043e**, *\u043a\u0443\u0440\u0441\u0438\u0432\u0430*). \u041e\u0442\u0432\u0435\u0447\u0430\u0439 \u0442\u043e\u043b\u044c\u043a\u043e \u043d\u0443\u0436\u043d\u044b\u043c \u0442\u0435\u043a\u0441\u0442\u043e\u043c, \u0431\u0435\u0437 \u043f\u043e\u044f\u0441\u043d\u0435\u043d\u0438\u0439.';
 function aiChatSend(){
   var input=document.getElementById('aiChatInput');
@@ -2838,6 +3198,13 @@ function collectContent(){
     if(!sel)continue;
     var ce=sel.querySelector('[contenteditable]');
     if(ce&&(blocks[si].type==='paragraph'||blocks[si].type==='heading'||blocks[si].type==='quote'||blocks[si].type==='code'))blocks[si].content=ce.innerHTML;
+    // Sync child blocks inside groups
+    if(blocks[si].children&&blocks[si].type==='group'){
+      for(var sci=0;sci<blocks[si].children.length;sci++){
+        var childCE=sel.querySelector('.child-block[data-child="'+sci+'"] [contenteditable]');
+        if(childCE)blocks[si].children[sci].content=childCE.innerHTML;
+      }
+    }
   }
   var title=document.getElementById('postTitle').value.trim();
   var tagsInput=document.getElementById('postTags').value.trim();
@@ -2852,6 +3219,20 @@ function collectContent(){
     else if(b.type==='separator')html.push('<hr>');
     else if(b.type==='code')html.push('<pre><code>'+b.content+'</code></pre>');
     else if(b.type==='image'&&b.imageData)html.push('<figure><img src="'+b.imageData+'" alt="'+(b.imageName||'')+'"></figure>');
+    else if(b.type==='group'){
+      html.push('<div class="group">');
+      var children=b.children||[];
+      for(var ci=0;ci<children.length;ci++){
+        var child=children[ci];
+        if(child.type==='paragraph')html.push('<p>'+child.content+'</p>');
+        else if(child.type==='heading')html.push('<'+child.level+'>'+child.content+'</'+child.level+'>');
+        else if(child.type==='separator')html.push('<hr>');
+        else if(child.type==='quote')html.push('<blockquote>'+child.content+'</blockquote>');
+        else if(child.type==='code')html.push('<pre><code>'+child.content+'</code></pre>');
+        else html.push('<p>'+child.content+'</p>');
+      }
+      html.push('</div>');
+    }
     else if(b.type==='table'){
       // Определяем реальное количество столбцов
       var pCols=2;
@@ -2870,6 +3251,20 @@ function collectContent(){
         html.push('</tr>');
       }
       html.push('</table>');
+    }else if(b.type==='group'){
+      html.push('<div class="preview-group">');
+      var children=b.children||[];
+      for(var ci=0;ci<children.length;ci++){
+        var child=children[ci];
+        var cls=ci>0?' class="preview-child"':'';
+        if(child.type==='paragraph'&&child.content)html.push('<p'+cls+'>'+child.content+'</p>');
+        else if(child.type==='heading'&&child.content)html.push('<'+child.level+cls+'>'+child.content+'</'+child.level+'>');
+        else if(child.type==='quote'&&child.content)html.push('<blockquote'+cls+'>'+child.content+'</blockquote>');
+        else if(child.type==='code')html.push('<pre'+cls+'><code>'+child.content+'</code></pre>');
+        else if(child.type==='separator')html.push('<hr>');
+        else if(child.content)html.push('<p'+cls+'>'+child.content+'</p>');
+      }
+      html.push('</div>');
     }
   }
   return{title:title,content:html.join('\n'),tags:tags};
@@ -2879,14 +3274,18 @@ function parseContent(content){
   var result=[],div=document.createElement('div');div.innerHTML=content;
   for(var i=0;i<div.children.length;i++){
     var el=div.children[i],tag=el.tagName.toLowerCase(),id='b'+(++blockCounter)+'_'+Date.now().toString(36);
-    if(tag==='p')result.push({id:id,type:'paragraph',level:'',content:el.innerHTML,imageData:null,imageName:null});
-    else if(tag.match(/^h[2-4]$/))result.push({id:id,type:'heading',level:tag,content:el.innerHTML,imageData:null,imageName:null});
-    else if(tag==='ul'||tag==='ol')result.push({id:id,type:'list',level:tag,content:el.outerHTML,imageData:null,imageName:null});
-    else if(tag==='blockquote')result.push({id:id,type:'quote',level:'',content:el.innerHTML,imageData:null,imageName:null});
-    else if(tag==='hr')result.push({id:id,type:'separator',level:'',content:'',imageData:null,imageName:null});
-    else if(tag==='pre'){var code=el.querySelector('code');result.push({id:id,type:'code',level:'',content:code?code.innerHTML:el.innerHTML,imageData:null,imageName:null});}
-    else if(tag==='figure'){var img=el.querySelector('img');if(img){result.push({id:id,type:'image',level:'',content:'',imageData:img.src,imageName:img.alt||''});}else{result.push({id:id,type:'image',level:'',content:'',imageData:null,imageName:null});}}
-    else result.push({id:id,type:'paragraph',level:'',content:el.innerHTML,imageData:null,imageName:null});
+    if(tag==='p'){
+      var inner=el.innerHTML.trim();
+      if(!inner||inner==='<br>'||inner==='<br/>')continue;
+      result.push({id:id,type:'paragraph',level:'',content:el.innerHTML,children:[],imageData:null,imageName:null});
+    }
+    else if(tag.match(/^h[2-4]$/))result.push({id:id,type:'heading',level:tag,content:el.innerHTML,children:[],imageData:null,imageName:null});
+    else if(tag==='ul'||tag==='ol')result.push({id:id,type:'list',level:tag,content:el.outerHTML,children:[],imageData:null,imageName:null});
+    else if(tag==='blockquote')result.push({id:id,type:'quote',level:'',content:el.innerHTML,children:[],imageData:null,imageName:null});
+    else if(tag==='hr')result.push({id:id,type:'separator',level:'',content:'',children:[],imageData:null,imageName:null});
+    else if(tag==='pre'){var code=el.querySelector('code');result.push({id:id,type:'code',level:'',content:code?code.innerHTML:el.innerHTML,children:[],imageData:null,imageName:null});}
+    else if(tag==='figure'){var img=el.querySelector('img');if(img){result.push({id:id,type:'image',level:'',content:'',children:[],imageData:img.src,imageName:img.alt||''});}else{result.push({id:id,type:'image',level:'',content:'',children:[],imageData:null,imageName:null});}}
+    else result.push({id:id,type:'paragraph',level:'',content:el.innerHTML,children:[],imageData:null,imageName:null});
   }
   if(result.length===0)result.push(createBlock('paragraph'));
   return result;
@@ -2901,6 +3300,15 @@ function setAutoSaveStatus(status){
   else if(status==='saving'){ind.style.background='var(--status-load)';ind.title='\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435...';}
   else if(status==='unsaved'){ind.style.background='var(--status-err)';ind.title='\u041d\u0435\u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e';}
 }
+function updateSaveIndicator(){
+  var el=document.getElementById('formatIndicator');
+  if(!el)return;
+  var fmtNames={'html':'HTML','md':'MD','txt':'TXT','pdf':'PDF'};
+  var fmt=fmtNames[expFormat]||expFormat.toUpperCase()||'?';
+  el.textContent=fmt;
+  el.title='Формат экспорта: '+fmt+'\nПуть: '+(expPath||'папка по умолчанию');
+  el.style.display='inline-block';
+}
 function scheduleAutoSave(){
   if(autoSaveTimer)clearTimeout(autoSaveTimer);
   setAutoSaveStatus('unsaved');
@@ -2913,9 +3321,11 @@ function doImmediateSave(){
   setAutoSaveStatus('saving');
   var data=collectContent();
   var item={id:currentId,title:title,content:data.content,tags:data.tags,
+    blocks:JSON.parse(JSON.stringify(blocks)),
     news_date:document.getElementById('newsDate').value||'',
     article_author:document.getElementById('articleAuthor').value||'',
-    article_rubric:document.getElementById('articleRubric').value||''};
+    article_rubric:document.getElementById('articleRubric').value||'',
+    export_format:expFormat,export_path:expPath};
   window.pywry.emit('content:save',{
     content_type:currentType,item:item,
     export_format:expFormat,export_path:expPath,
@@ -2953,17 +3363,21 @@ function confirmSave(){
   var title=document.getElementById('postTitle').value.trim();
   if(!title){showToast('\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a');return;}
   var fmt=document.getElementById('saveFormat').value;
+  var path=document.getElementById('savePath').value;
   expFormat=fmt;
+  expPath=path;
   var data=collectContent();
   var item={
     id:currentId||Date.now().toString(36)+Math.random().toString(36).substring(2,6),
     title:title,content:data.content,tags:data.tags,
+    blocks:JSON.parse(JSON.stringify(blocks)),
     news_date:document.getElementById('newsDate').value||'',
     article_author:document.getElementById('articleAuthor').value||'',
-    article_rubric:document.getElementById('articleRubric').value||''
+    article_rubric:document.getElementById('articleRubric').value||'',
+    export_format:fmt,export_path:path
   };
   hideSaveDialog();
-  window.pywry.emit('content:save',{content_type:currentType,item:item,export_format:fmt,export_path:expPath});
+  window.pywry.emit('content:save',{content_type:currentType,item:item,export_format:fmt,export_path:path});
 }
 
 function newItem(){
@@ -3064,6 +3478,20 @@ function showPreview(){
         html.push('</tr>');
       }
       html.push('</table>');
+    }else if(b.type==='group'){
+      html.push('<div class="preview-group">');
+      var children=b.children||[];
+      for(var ci=0;ci<children.length;ci++){
+        var child=children[ci];
+        var cls=ci>0?' class="preview-child"':'';
+        if(child.type==='paragraph'&&child.content)html.push('<p'+cls+'>'+child.content+'</p>');
+        else if(child.type==='heading'&&child.content)html.push('<'+child.level+cls+'>'+child.content+'</'+child.level+'>');
+        else if(child.type==='quote'&&child.content)html.push('<blockquote'+cls+'>'+child.content+'</blockquote>');
+        else if(child.type==='code')html.push('<pre'+cls+'><code>'+child.content+'</code></pre>');
+        else if(child.type==='separator')html.push('<hr>');
+        else if(child.content)html.push('<p'+cls+'>'+child.content+'</p>');
+      }
+      html.push('</div>');
     }
   }
   document.getElementById('previewBody').innerHTML=html.join('\n');
@@ -3748,8 +4176,38 @@ window.pywry.on('ui:open-editor',function(data){
   document.getElementById('postTitle').value=item.title||'';
   document.getElementById('postTags').value=(item.tags||[]).join(', ');
   updateMeta(item);
-  blocks=parseContent(item.content);selectedBlock=-1;renderBlocks();
+  // Если сохранён массив blocks (с вложенностью) — используем его
+  if(item.blocks&&item.blocks.length){
+    // Фильтр: удаляем пустые параграф-блоки (оставляем image, separator, table, group)
+    var filtered=[];
+    for(var bi=0;bi<item.blocks.length;bi++){
+      var b=item.blocks[bi];
+      if(b.type==='paragraph'&&(!b.content||b.content.trim()===''||b.content.trim()==='<br>'||b.content.trim()==='<br/>'))continue;
+      // Восстанавливаем children у всех блоков
+      if(!b.children)b.children=[];
+      // Для групп — восстанавливаем children у дочерних
+      if(b.children){
+        for(var bci=0;bci<b.children.length;bci++){
+          if(!b.children[bci].children)b.children[bci].children=[];
+        }
+      }
+      filtered.push(b);
+    }
+    blocks=filtered;
+  }else{
+    // Fallback: парсим HTML (для старых документов)
+    // item.content может быть как строкой (HTML), так и объектом {title, content, tags}
+    var contentStr = (typeof item.content === 'object' && item.content !== null)
+      ? (item.content.content || item.content.title || '')
+      : (item.content || '');
+    blocks=parseContent(contentStr);
+  }
+  selectedBlock=-1;renderBlocks();
   undoStack=[];saveHistory(); // сохраняем начальное состояние для Undo
+  // Восстанавливаем формат и путь экспорта из сохранённого документа
+  expFormat=item.export_format||'html';
+  expPath=item.export_path||'';
+  updateSaveIndicator();
   // Загружаем количество версий
   window.pywry.emit('content:get-versions',{content_type:currentType,id:currentId},'__versions__');
 });
@@ -3758,6 +4216,7 @@ window.pywry.on('ui:settings',function(data){
   expFormat=data.export_format||'html';expPath=data.export_path||'';
   document.getElementById('exportPath').value=expPath;
   document.getElementById('dataPathInfo').textContent=data.data_path||'';
+  updateSaveIndicator();
   // Сохраняем per-provider данные
   window._providersData=data.providers||{};
   window._providerKeys=data.provider_keys||{};
@@ -3894,6 +4353,7 @@ window.pywry.on('ui:print-pdf',function(data){
 
 window.pywry.on('ui:auto-saved',function(){
   setAutoSaveStatus('saved');
+  updateSaveIndicator();
 });
 
 window.pywry.on('ui:ai-result',function(data){
@@ -3910,6 +4370,23 @@ window.pywry.on('ui:ai-result',function(data){
     pendingAiBlockIdx=-1;
   } else {
     aiResultText=data.text;
+    // Авто-вставка как подблок (из blockAiQuerySend)
+    if(_blockAiInsertAsChild>=0&&blocks[_blockAiInsertAsChild]){
+      var parent=blocks[_blockAiInsertAsChild];
+      if(parent&&parent.type==='group'){
+        saveHistory();
+        var nb=createBlock('paragraph');
+        nb.content=data.text.trim();
+        if(!parent.children)parent.children=[];
+        parent.children.push(nb);
+        removeAiInlineResult();
+        _blockAiInsertAsChild=-1;pendingAiBlockIdx=-1;aiResultText='';
+        renderBlocks();scheduleAutoSave();
+        showToast('\u041e\u0442\u0432\u0435\u0442 \u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d \u043a\u0430\u043a \u043f\u043e\u0434\u0431\u043b\u043e\u043a');
+        return;
+      }
+      _blockAiInsertAsChild=-1;
+    }
     el.className='ai-result';
     if(tEl){tEl.textContent=data.text}else{el.textContent=data.text}
     el.style.display='block';
@@ -4088,3 +4565,5 @@ win.set_decorations(False)
 win.set_background_color(240, 240, 241)
 win.center()
 app.block()
+# Гарантированный выход из процесса (на случай, если окно закрыто не через callback)
+os._exit(0)
